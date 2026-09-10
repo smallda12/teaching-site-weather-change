@@ -264,6 +264,10 @@ body.作答中 .重點短片 {
 }
 
 .口播稿 { font-size: 30px; font-weight: 600; margin: 18px 0 0; }
+/* ---------- 課文導讀（選配：只有 UNIT.課文 存在才會顯示） ---------- */
+.課文段落 { margin-bottom: 22px; }
+.課文段落:last-child { margin-bottom: 0; }
+.課文段 { font-size: 28px; font-weight: 600; line-height: 1.9; margin: 0 0 10px; }
 .題幹 { font-size: 32px; font-weight: 800; text-align: center; margin: 14px 0 12px; color: var(--綠深); }
 
 .選項列 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
