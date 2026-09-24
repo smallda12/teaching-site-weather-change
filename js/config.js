@@ -19,7 +19,7 @@ window.CONFIG = (function () {
     允許上傳照片: 版本 === "教室版",
     // 換掉 assets/pdf 或影片等檔案後，把這個數字加 1，
     // 否則瀏覽器會繼續開快取裡的舊 PDF（檔名沒變，瀏覽器不會自己去抓新的）
-    資源版本: 3,
+    資源版本: 4,
     語音: {
       // 預產語音資料夾（edge-tts / zh-TW-HsiaoChenNeural 女聲，語速 -5%）
       路徑: "assets/audio/",
