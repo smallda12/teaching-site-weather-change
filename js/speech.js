@@ -43,7 +43,7 @@ window.語音 = (function () {
   /* 播放預產 MP3。
      回傳值："結束"＝完整播完　"中斷"＝被新的語音打斷　"錯誤"／"逾時"＝沒播成功
      一定會 settle，不會讓呼叫端卡住。 */
-  function 說話(src, { 打斷 = true, 逾時 = 12000 } = {}) {
+  function 說話(src, { 打斷 = true, 逾時 = 12000, 起 = 0, 迄 = null, 進度 = null } = {}) {
     return new Promise((resolve) => {
       if (打斷) 停止();
       /* 重產語音後檔名不變，加版本參數才不會播到瀏覽器快取裡的舊音檔 */
@@ -63,6 +63,16 @@ window.語音 = (function () {
       const 計時 = setTimeout(() => 收("逾時"), 逾時);
       a.onended = () => 收("結束");
       a.onerror = () => 收("錯誤");
+      if (進度 || 迄 !== null) {
+        a.ontimeupdate = () => {
+          if (已結束) return;
+          if (進度) 進度(a.currentTime);
+          if (迄 !== null && a.currentTime >= 迄) { a.pause(); 收("結束"); }
+        };
+      }
+      /* 載入前設定 currentTime＝「預設開始位置」（HTML 規範），play() 仍在點按當下呼叫，
+         iPad／Safari 不會因為等待載入而擋掉播放 */
+      if (起 > 0) a.currentTime = 起;
       a.play().catch(() => 收("錯誤"));
     });
   }

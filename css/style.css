@@ -268,6 +268,13 @@ body.作答中 .重點短片 {
 .課文段落 { margin-bottom: 22px; }
 .課文段落:last-child { margin-bottom: 0; }
 .課文段 { font-size: 28px; font-weight: 600; line-height: 1.9; margin: 0 0 10px; }
+/* 一句一圖（選配：只有 UNIT.課文配圖 存在才會出現圖與可點的句子） */
+.課文圖框 { margin: 0 auto 14px; max-width: 760px; aspect-ratio: 16 / 9; border-radius: 18px;
+  overflow: hidden; border: 3px solid #e3ecd9; background: #f4f8ef; }
+.課文圖 { display: block; width: 100%; height: 100%; object-fit: contain; }
+.課文句 { cursor: pointer; border-radius: 8px; padding: 2px 2px; transition: background-color .2s; }
+.課文句:hover { background: #f1f7e9; }
+.課文句.播放中 { background: #fff1a8; box-shadow: 0 0 0 3px #ffd54f; }
 .題幹 { font-size: 32px; font-weight: 800; text-align: center; margin: 14px 0 12px; color: var(--綠深); }
 
 .選項列 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

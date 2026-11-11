@@ -927,6 +927,42 @@
     const 有資料 = () =>
       window.UNIT.課文 && Array.isArray(UNIT.課文.段落) && UNIT.課文.段落.length > 0;
 
+    /* 一句一圖（選配，2026-11-10 起）：資料來自 data.js 的 UNIT.課文配圖（由 補課文配圖.py 產生）。
+       每一句有自己的圖與在音檔裡的開始秒數（段起＝段落音檔、全起＝全文音檔）；
+       播放時依目前秒數標亮那一句、把該段的圖換成那一句的圖。沒有這個欄位就維持原本的純文字。 */
+    let 句表 = null;
+    const 段句 = (段號) => (句表 || []).filter((x) => x.段 === 段號);
+    const 找句 = (組, 欄, t) => { let k = 組[0]; for (const x of 組) if (x[欄] <= t + 0.01) k = x; return k; };
+
+    function 標亮(i, { 捲動 = false } = {}) {
+      $$(".課文句", $("#課文內容")).forEach((s) => s.classList.toggle("播放中", +s.dataset.句 === i));
+      const x = 句表 && 句表[i];
+      if (!x) return;
+      const 段 = $(`.課文段落[data-段="${x.段}"]`, $("#課文內容"));
+      const 圖 = 段 && $(".課文圖", 段);
+      if (圖 && 圖.getAttribute("src") !== x.圖) { 圖.src = x.圖; 圖.alt = x.文; }
+      /* 捲到該段時要停在頂端綠色導覽列（sticky）下面，否則圖的上半部會被導覽列蓋住（2026-11-11 老師回報） */
+      if (捲動 && 段) {
+        const 頂 = ($(".導覽")?.getBoundingClientRect().bottom || 0) + 12;
+        const r = 段.getBoundingClientRect();
+        if (r.top < 頂 || r.bottom > innerHeight) window.scrollTo({ top: scrollY + r.top - 頂, behavior: "smooth" });
+      }
+    }
+    const 清標亮 = () => $$(".課文句.播放中", $("#課文內容")).forEach((s) => s.classList.remove("播放中"));
+
+    /* 播放一段音檔並跟著秒數換句；被別的語音打斷時，只有「最後一次播放」才清掉標亮 */
+    let 序 = 0;
+    function 跟讀(src, { 逾時, 組, 欄, 起 = 0, 迄 = null, 捲動 = false }) {
+      const 本次 = ++序;
+      let 現 = -1;
+      const 更新 = (t) => {
+        const k = 找句(組, 欄, t).i;
+        if (k !== 現) { 現 = k; 標亮(k, { 捲動 }); }
+      };
+      更新(起);
+      return 語音.說話(src, { 逾時, 起, 迄, 進度: 更新 }).then((r) => { if (本次 === 序) 清標亮(); return r; });
+    }
+
     function 畫() {
       if (!有資料()) {
         $("#區課文")?.remove();
@@ -934,17 +970,57 @@
         return;
       }
       $("#課文標題").textContent = UNIT.課文.標題 || "";
+      const 配 = window.UNIT.課文配圖;
+      句表 = 配 && Array.isArray(配.句) && 配.句.length ? 配.句.map((x, i) => ({ ...x, i })) : null;
       /* 每段各自一顆「再聽一次」，可以單獨重複播放；下面另外還有一顆
          「朗讀全文」播放連續完整版，兩種語音各自獨立產生，不是切段落。 */
-      $("#課文內容").innerHTML = UNIT.課文.段落.map((p) => `
-        <div class="課文段落">
-          <p class="課文段">${p.文}</p>
-          <button class="次要鈕 課文段鈕" data-音="${p.語音}">🔊 再聽一次</button>
-        </div>`).join("");
+      $("#課文內容").innerHTML = UNIT.課文.段落.map((p, pi) => {
+        const 段號 = pi + 1;
+        let 本段 = 段句(段號);
+        /* 防呆：句子接起來必須與段落原文逐字相同，否則（課文改過但沒重跑配圖）退回純文字 */
+        if (本段.length && 本段.map((x) => x.文).join("").replace(/\s+/g, "") !== p.文.replace(/\s+/g, "")) {
+          console.warn(`課文配圖第 ${段號} 段的句子與課文不一致，這一段改用純文字。`);
+          本段 = [];
+        }
+        const 文 = 本段.length
+          ? 本段.map((x) => `<span class="課文句" data-句="${x.i}" title="點一下聽這一句">${x.文}</span>`).join("")
+          : p.文;
+        const 圖 = 本段.length
+          ? `<figure class="課文圖框"><img class="課文圖" src="${本段[0].圖}" alt="${本段[0].文}"></figure>`
+          : "";
+        return `
+        <div class="課文段落" data-段="${段號}" data-配圖="${本段.length ? 1 : 0}">
+          ${圖}
+          <p class="課文段">${文}</p>
+          <button class="次要鈕 課文段鈕" data-音="${p.語音}" data-段="${段號}">🔊 再聽一次</button>
+        </div>`;
+      }).join("");
+      /* 先把每張圖載進來，播放換句時才不會閃白 */
+      (句表 || []).forEach((x) => { const im = new Image(); im.src = x.圖; });
+
       $$(".課文段鈕", $("#課文內容")).forEach((b) => {
-        b.onclick = () => 語音.說話(b.dataset.音, { 逾時: 40000 });   /* 課文段落 12～15 秒，超過預設 12 秒逾時 */
+        const 段號 = +b.dataset.段;
+        const 有圖 = b.closest(".課文段落").dataset.配圖 === "1";
+        /* 課文段落 13～15 秒，超過預設 12 秒逾時 */
+        b.onclick = () => 有圖
+          ? 跟讀(b.dataset.音, { 逾時: 40000, 組: 段句(段號), 欄: "段起" })
+          : 語音.說話(b.dataset.音, { 逾時: 40000 });
       });
-      $("#鈕課文朗讀").onclick = () => 語音.說話(UNIT.課文.語音, { 逾時: 120000 });   /* 全文約 40 秒，逾時後「停止」會停不掉它 */
+      /* 點一句聽一句：播該段音檔從這一句的開始秒數到下一句開始前（句界停頓約 1 秒，停在停頓中間） */
+      $$(".課文句", $("#課文內容")).forEach((s) => {
+        s.onclick = () => {
+          const x = 句表[+s.dataset.句];
+          const 下一 = 段句(x.段).find((y) => y.i === x.i + 1);
+          跟讀(UNIT.課文.段落[x.段 - 1].語音, {
+            逾時: 40000, 組: [x], 欄: "段起", 起: x.段起, 迄: 下一 ? 下一.段起 - 0.3 : null,
+          });
+        };
+      });
+      /* 全文約 40 秒，逾時後「停止」會停不掉它 */
+      const 全有圖 = 句表 && $$(".課文段落", $("#課文內容")).every((d) => d.dataset.配圖 === "1");
+      $("#鈕課文朗讀").onclick = () => 全有圖
+        ? 跟讀(UNIT.課文.語音, { 逾時: 120000, 組: 句表, 欄: "全起", 捲動: true })
+        : 語音.說話(UNIT.課文.語音, { 逾時: 120000 });
     }
 
     return { 畫 };
