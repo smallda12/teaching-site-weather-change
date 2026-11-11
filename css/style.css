@@ -275,6 +275,10 @@ body.作答中 .重點短片 {
 .課文句 { cursor: pointer; border-radius: 8px; padding: 2px 2px; transition: background-color .2s; }
 .課文句:hover { background: #f1f7e9; }
 .課文句.播放中 { background: #fff1a8; box-shadow: 0 0 0 3px #ffd54f; }
+/* 課文影片（選配：只有 UNIT.課文影片 存在才會出現） */
+.課文影片卡 { margin-bottom: 18px; }
+.課文影片 { max-width: 860px; margin: 0 auto 8px; aspect-ratio: 1728 / 1080; }
+.課文影片卡 .小字 { text-align: center; }
 .題幹 { font-size: 32px; font-weight: 800; text-align: center; margin: 14px 0 12px; color: var(--綠深); }
 
 .選項列 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
